@@ -8,7 +8,10 @@ import xbmcaddon, xbmc, xbmcplugin, xbmcgui
 import HTMLParser
 import BeautifulSoup
 import urlparse
+import json
 from xml.sax import saxutils as su
+
+
 
 ##General vars
 ### http://www.hidabroot.org/he/vod_categories/10/all/all/all/0?SupplierID=1&page=0%2C99
@@ -16,7 +19,7 @@ __plugin__ = "addons://sources/video/Zamir"
 __author__ = "t5i"
 
 base_domain="www.hidabroot.org"
-baseVOD_url = "http://www.hidabroot.org/he/vod_categories/10/all/all/all/0?SupplierID=1&page=0%2C0"
+baseVOD_url = "http://rabbizamircohen.org/Webservices/GetAllVideo.php"
 baseVOD_urlGlobl="http://www.hidabroot.org"
 base_url = sys.argv[0]
 
@@ -37,7 +40,10 @@ def build_XBMCurl(query):
 
 def playMovie(url):
 	req = urllib2.Request(url)
-	req.add_header('User-Agent', ' Mozilla/5.0 (Windows; U; Windows NT 5.1; en-GB; rv:1.9.0.3) Gecko/2008092417 Firefox/3.0.3')
+	req.add_header('User-Agent', 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2272.101 Safari/537.36')
+	#req.add_header('Cookie', 'visid_incap_172050=p38EPb70SDKdiG5ET58Q1Y1qv1QAAAAAQUIPAAAAAAAZe7rcEcv5x02MxQ2ETK0o; incap_ses_264_172050=oTvpMEi/eBHltm1z3eqpA3tvGVUAAAAAO2gzlNYBuURCjCKde3pqqQ==; _gat=1; has_js=1; _ga=GA1.2.1227030176.1421830788')
+	#req.add_header('referer','http://www.hidabroot.org/he/video/70494')
+	print req
 	response = urllib2.urlopen(req)
 	link=response.read()
 	response.close()    
@@ -95,26 +101,47 @@ def addDirNextPage(name,url,mode,iconimage):
     
 def addLink(name,url,iconimage):
         ok=True
-        liz=xbmcgui.ListItem(name, iconImage="DefaultVideo.png", thumbnailImage=iconimage)
+        liz=xbmcgui.ListItem(name, iconImage=iconimage, thumbnailImage=iconimage)
         liz.setInfo( type="Video", infoLabels={ "Title": name } )
         ok=xbmcplugin.addDirectoryItem(handle=int(sys.argv[1]),url=url,listitem=liz)
         return ok
-	
+#
+#http://rabbizamircohen.org/Images/10072008_????_????_-_???_?`_10102011140129605.jpg
+#http://rabbizamircohen.org/Videos/Pirke-Avot-part-A.mp4
+
 def GetLinksPage (uri):
+
 	links=GetPageNLink(uri)
-	match=re.compile('(<div class="views-field views-field-title">.*?</div>)').findall(links) # Videos
+	jsonObject = json.loads(links)
+	
+	#match=re.compile('(<div class="views-field views-field-title">.*?</div>)').findall(links) # Videos
+	#print "uri ------------------------------------------------------------------------------------ views-field views-field-title  "
+	#print links
 	print "next pageeeepageeeepageeeepageeeepageeeepageeeepageeeepageeeepageeee" 
-	print "-------------------"
-	sPage=uri.split("=")[2].split("C")[1]
-	iPage=int(sPage)+1
-	print iPage
-	for url in match:
-		matchVidURL=re.compile('<a href="(/he/video/.*?)">(.*?)</a>').findall(url)
-		for name,uri in matchVidURL:
-			addDir(uri,name,"1","")
-			#addLink(uri,name,"")
-	addDirNextPage("..הבא..",baseVOD_url+str(iPage),2,"")
-	xbmcplugin.endOfDirectory(int(sys.argv[1]))
+	parent =  jsonObject["Video"]
+	json_string = json.dumps(jsonObject,sort_keys=True,indent=2)
+	for item in parent:
+		sFile = item["videoFile"].encode('utf-8').strip()
+		sName = item["name"].encode('utf-8').strip()
+		sCat = item["category"].encode('utf-8').strip()
+		sImg = item["imgThumb"].encode('utf-8').strip()
+		addLink(sName,"http://rabbizamircohen.org/Videos/" + sFile, "http://rabbizamircohen.org/Images/" + sImg)#addDir(sName,sFile,"1","")
+		#print sName, "  --  "  , sCat
+	##addDirNextPage("..הבא..",baseVOD_url+str(iPage),2,"")
+	xbmcplugin.endOfDirectory(int(sys.argv[1]))	
+
+	 
+	##print "-------------------"
+	##sPage=uri.split("=")[2].split("C")[1]
+	##iPage=int(sPage)+1
+	##print iPage
+	##for url in match:
+	##	matchVidURL=re.compile('<a href="(/he/video/.*?)">(.*?)</a>').findall(url)
+	##	for name,uri in matchVidURL:
+	##		addDir(uri,name,"1","")
+	##		#addLink(uri,name,"")
+	##addDirNextPage("..הבא..",baseVOD_url+str(iPage),2,"")
+	##xbmcplugin.endOfDirectory(int(sys.argv[1]))
 
 
 def GetLinkVideo(uri,name,iconimage):
